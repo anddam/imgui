@@ -1,7 +1,7 @@
 # Written by Leonardo Mariscal <leo@ldmd.mx>, 2019
 
 import strutils, json, strformat, tables,
-       algorithm, sets, ./utils
+       algorithm, sets, ./utils, sequtils
 
 var enums: HashSet[string]
 var enumsCount: Table[string, int]
@@ -140,7 +140,7 @@ proc genEnums(output: var string) =
     for data in obj:
       var dataName = data["name"].getStr()
       dataName = dataName.replace("__", "_")
-      dataName = dataName.split("_")[1]
+      dataName = dataName.split("_").filterIt(it != "")[^1]
       if dataName.endsWith("_"):
         dataName = dataName[0 ..< dataName.len - 1]
       if dataName == "COUNT":
@@ -150,6 +150,10 @@ proc genEnums(output: var string) =
       if table.hasKey(dataValue):
         echo "Enum {enumName}.{dataName} already exists as {enumName}.{table[dataValue]} with value {dataValue} skipping...".fmt
         continue
+      if dataName.len == 1 and dataName[0] in '0'..'9':
+        dataName = &"NUMBER_{dataName}"
+      elif dataName == "END":
+        dataName = "CAPITAL_END"
       table[dataValue] = dataName
 
     var tableOrder: OrderedTable[int, string] # Weird error where data is erased if used directly
@@ -158,6 +162,7 @@ proc genEnums(output: var string) =
     tableOrder.sort(system.cmp)
 
     for k, v in tableOrder.pairs:
+      # echo "DEBUG {v}".fmt
       output.add("    {v} = {k}\n".fmt)
 
 proc genTypeDefs(output: var string) =
